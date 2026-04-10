@@ -1,0 +1,321 @@
+import os
+
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration, PythonExpression
+from launch_ros.actions import Node
+
+
+def generate_launch_description():
+    gps_wpf_dir = get_package_share_directory("navegacion_gps")
+    rviz_full = os.path.join(gps_wpf_dir, "config", "rviz_nav2_full.rviz")
+    rviz_local = os.path.join(gps_wpf_dir, "config", "rviz_ekf_local_tuning.rviz")
+    rviz_global = os.path.join(gps_wpf_dir, "config", "rviz_ekf_global_tuning.rviz")
+    keepout_mask_yaml = os.path.join(gps_wpf_dir, "config", "keepout_mask.yaml")
+
+    use_sim_time = LaunchConfiguration("use_sim_time")
+    use_rviz = LaunchConfiguration("use_rviz")
+    rviz_conf = LaunchConfiguration("rviz_conf")
+    use_keepout = LaunchConfiguration("use_keepout")
+    nav_start_delay_s = LaunchConfiguration("nav_start_delay_s")
+    wheelbase_m = LaunchConfiguration("wheelbase_m")
+    invert_measured_steer_sign = LaunchConfiguration("invert_measured_steer_sign")
+    vx_deadband_mps = LaunchConfiguration("vx_deadband_mps")
+    vx_min_effective_mps = LaunchConfiguration("vx_min_effective_mps")
+    invert_steer_from_cmd_vel = LaunchConfiguration("invert_steer_from_cmd_vel")
+    use_cmd_vel_ackermann_bridge = LaunchConfiguration("use_cmd_vel_ackermann_bridge")
+    launch_controller_server = LaunchConfiguration("launch_controller_server")
+    nav2_params_file = LaunchConfiguration("nav2_params_file")
+    collision_monitor_params_file = LaunchConfiguration("collision_monitor_params_file")
+    keepout_mask_yaml_arg = LaunchConfiguration("keepout_mask_yaml")
+    custom_urdf = LaunchConfiguration("custom_urdf")
+    world = LaunchConfiguration("world")
+    world_name = LaunchConfiguration("world_name")
+    model_name = LaunchConfiguration("model_name")
+    pose_covariance_xy = LaunchConfiguration("pose_covariance_xy")
+    pose_covariance_yaw = LaunchConfiguration("pose_covariance_yaw")
+    twist_covariance_vx = LaunchConfiguration("twist_covariance_vx")
+    twist_covariance_vy = LaunchConfiguration("twist_covariance_vy")
+    twist_covariance_yaw_rate = LaunchConfiguration("twist_covariance_yaw_rate")
+    ekf_local = LaunchConfiguration("ekf_local")
+    ekf_global = LaunchConfiguration("ekf_global")
+    ukf = LaunchConfiguration("ukf")
+    datum_setter = LaunchConfiguration("datum_setter")
+    gps_profile = LaunchConfiguration("gps_profile")
+    enable_gps_course_heading = LaunchConfiguration("enable_gps_course_heading")
+    gps_course_heading_min_distance_m = LaunchConfiguration(
+        "gps_course_heading_min_distance_m"
+    )
+    gps_course_heading_min_speed_mps = LaunchConfiguration(
+        "gps_course_heading_min_speed_mps"
+    )
+    gps_course_heading_max_abs_steer_deg = LaunchConfiguration(
+        "gps_course_heading_max_abs_steer_deg"
+    )
+    gps_course_heading_max_abs_yaw_rate_rps = LaunchConfiguration(
+        "gps_course_heading_max_abs_yaw_rate_rps"
+    )
+    gps_course_heading_publish_hz = LaunchConfiguration("gps_course_heading_publish_hz")
+    gps_course_heading_yaw_variance_rad2 = LaunchConfiguration(
+        "gps_course_heading_yaw_variance_rad2"
+    )
+    gps_course_heading_sample_dt_min_s = LaunchConfiguration(
+        "gps_course_heading_sample_dt_min_s"
+    )
+    gps_course_heading_sample_dt_max_s = LaunchConfiguration(
+        "gps_course_heading_sample_dt_max_s"
+    )
+    gps_course_heading_max_pair_distance_base_m = LaunchConfiguration(
+        "gps_course_heading_max_pair_distance_base_m"
+    )
+    gps_course_heading_max_pair_distance_speed_gain = LaunchConfiguration(
+        "gps_course_heading_max_pair_distance_speed_gain"
+    )
+    gps_course_heading_max_pair_speed_error_mps = LaunchConfiguration(
+        "gps_course_heading_max_pair_speed_error_mps"
+    )
+    gps_course_heading_heading_change_base_deg = LaunchConfiguration(
+        "gps_course_heading_heading_change_base_deg"
+    )
+    gps_course_heading_heading_change_yaw_rate_gain = LaunchConfiguration(
+        "gps_course_heading_heading_change_yaw_rate_gain"
+    )
+    gps_course_heading_candidates = LaunchConfiguration(
+        "gps_course_heading_candidates"
+    )
+    gps_course_heading_max_heading_dispersion_deg = LaunchConfiguration(
+        "gps_course_heading_max_heading_dispersion_deg"
+    )
+    gps_course_heading_enable_consistency_filters = LaunchConfiguration(
+        "gps_course_heading_enable_consistency_filters"
+    )
+    gps_course_heading_enable_offset_compensation = LaunchConfiguration(
+        "gps_course_heading_enable_offset_compensation"
+    )
+    gps_course_heading_gps_frame = LaunchConfiguration("gps_course_heading_gps_frame")
+    gps_course_heading_transform_timeout_s = LaunchConfiguration(
+        "gps_course_heading_transform_timeout_s"
+    )
+    effective_gps_profile = PythonExpression(
+        [
+            "'f9p_rtk' if ('",
+            gps_profile,
+            "' == '' and '",
+            ekf_global,
+            "'.lower() == 'true' and '",
+            enable_gps_course_heading,
+            "'.lower() == 'true') else ('m8n' if '",
+            gps_profile,
+            "' == '' else '",
+            gps_profile,
+            "')",
+        ]
+    )
+    selected_rviz_config = PythonExpression(
+        [
+            "'",
+            rviz_global,
+            "' if '",
+            rviz_conf,
+            "' == 'global' else '",
+            rviz_local,
+            "' if '",
+            rviz_conf,
+            "' == 'local' else '",
+            rviz_full,
+            "'",
+        ]
+    )
+
+    return LaunchDescription(
+        [
+            DeclareLaunchArgument("use_sim_time", default_value="True"),
+            DeclareLaunchArgument("use_rviz", default_value="True"),
+            DeclareLaunchArgument(
+                "rviz_conf",
+                default_value="full",
+                choices=["full", "local", "global"],
+            ),
+            # Kept for backward compatibility; ignored in simulacion wrapper in favor of rviz_conf.
+            DeclareLaunchArgument("rviz_config", default_value=rviz_full),
+            DeclareLaunchArgument("use_keepout", default_value="True"),
+            DeclareLaunchArgument("nav_start_delay_s", default_value="4.0"),
+            DeclareLaunchArgument("wheelbase_m", default_value="0.94"),
+            DeclareLaunchArgument("invert_measured_steer_sign", default_value="True"),
+            DeclareLaunchArgument("vx_deadband_mps", default_value="0.01"),
+            DeclareLaunchArgument("vx_min_effective_mps", default_value="0.5"),
+            DeclareLaunchArgument("invert_steer_from_cmd_vel", default_value="True"),
+            DeclareLaunchArgument("use_cmd_vel_ackermann_bridge", default_value="False"),
+            DeclareLaunchArgument("launch_controller_server", default_value="False"),
+            DeclareLaunchArgument(
+                "nav2_params_file",
+                default_value=os.path.join(gps_wpf_dir, "config", "nav2_no_map_params.yaml"),
+            ),
+            DeclareLaunchArgument(
+                "collision_monitor_params_file",
+                default_value=os.path.join(gps_wpf_dir, "config", "collision_monitor.yaml"),
+            ),
+            DeclareLaunchArgument("keepout_mask_yaml", default_value=keepout_mask_yaml),
+            DeclareLaunchArgument(
+                "custom_urdf",
+                default_value=os.path.join(gps_wpf_dir, "models", "cuatri_real.urdf"),
+            ),
+            DeclareLaunchArgument(
+                "world",
+                default_value=os.path.join(gps_wpf_dir, "worlds", "vacio.world"),
+            ),
+            DeclareLaunchArgument("world_name", default_value="vacio"),
+            DeclareLaunchArgument("model_name", default_value="quad_ackermann_viewer_safe"),
+            DeclareLaunchArgument("pose_covariance_xy", default_value="0.01"),
+            DeclareLaunchArgument("pose_covariance_yaw", default_value="0.05"),
+            DeclareLaunchArgument("twist_covariance_vx", default_value="0.02"),
+            DeclareLaunchArgument("twist_covariance_vy", default_value="0.02"),
+            DeclareLaunchArgument("twist_covariance_yaw_rate", default_value="0.05"),
+            DeclareLaunchArgument("ekf_local", default_value="True"),
+            DeclareLaunchArgument("ekf_global", default_value="False"),
+            DeclareLaunchArgument("ukf", default_value="False"),
+            DeclareLaunchArgument("datum_setter", default_value="false"),
+            DeclareLaunchArgument("gps_profile", default_value=""),
+            DeclareLaunchArgument("enable_gps_course_heading", default_value="true"),
+            DeclareLaunchArgument("gps_course_heading_min_distance_m", default_value="1.0"),
+            DeclareLaunchArgument("gps_course_heading_min_speed_mps", default_value="0.4"),
+            DeclareLaunchArgument("gps_course_heading_max_abs_steer_deg", default_value="3.0"),
+            DeclareLaunchArgument(
+                "gps_course_heading_max_abs_yaw_rate_rps",
+                default_value="0.06",
+            ),
+            DeclareLaunchArgument("gps_course_heading_publish_hz", default_value="10.0"),
+            DeclareLaunchArgument(
+                "gps_course_heading_yaw_variance_rad2",
+                default_value="0.05",
+            ),
+            DeclareLaunchArgument("gps_course_heading_sample_dt_min_s", default_value="0.05"),
+            DeclareLaunchArgument("gps_course_heading_sample_dt_max_s", default_value="4.0"),
+            DeclareLaunchArgument(
+                "gps_course_heading_max_pair_distance_base_m",
+                default_value="0.10",
+            ),
+            DeclareLaunchArgument(
+                "gps_course_heading_max_pair_distance_speed_gain",
+                default_value="1.5",
+            ),
+            DeclareLaunchArgument(
+                "gps_course_heading_max_pair_speed_error_mps",
+                default_value="0.75",
+            ),
+            DeclareLaunchArgument(
+                "gps_course_heading_heading_change_base_deg",
+                default_value="3.0",
+            ),
+            DeclareLaunchArgument(
+                "gps_course_heading_heading_change_yaw_rate_gain",
+                default_value="1.0",
+            ),
+            DeclareLaunchArgument(
+                "gps_course_heading_candidates",
+                default_value="5",
+            ),
+            DeclareLaunchArgument(
+                "gps_course_heading_max_heading_dispersion_deg",
+                default_value="4.0",
+            ),
+            DeclareLaunchArgument(
+                "gps_course_heading_enable_consistency_filters",
+                default_value="true",
+            ),
+            DeclareLaunchArgument(
+                "gps_course_heading_enable_offset_compensation",
+                default_value="true",
+            ),
+            DeclareLaunchArgument("gps_course_heading_gps_frame", default_value="gps_link"),
+            DeclareLaunchArgument(
+                "gps_course_heading_transform_timeout_s",
+                default_value="0.2",
+            ),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(gps_wpf_dir, "launch", "sim_local_v2.launch.py")
+                ),
+                launch_arguments={
+                    "use_sim_time": use_sim_time,
+                    "use_rviz": use_rviz,
+                    "rviz_config": selected_rviz_config,
+                    "use_keepout": use_keepout,
+                    "nav_start_delay_s": nav_start_delay_s,
+                    "wheelbase_m": wheelbase_m,
+                    "invert_measured_steer_sign": invert_measured_steer_sign,
+                    "vx_deadband_mps": vx_deadband_mps,
+                    "vx_min_effective_mps": vx_min_effective_mps,
+                    "invert_steer_from_cmd_vel": invert_steer_from_cmd_vel,
+                    "use_cmd_vel_ackermann_bridge": use_cmd_vel_ackermann_bridge,
+                    "launch_controller_server": launch_controller_server,
+                    "nav2_params_file": nav2_params_file,
+                    "collision_monitor_params_file": collision_monitor_params_file,
+                    "keepout_mask_yaml": keepout_mask_yaml_arg,
+                    "custom_urdf": custom_urdf,
+                    "world": world,
+                    "world_name": world_name,
+                    "model_name": model_name,
+                    "pose_covariance_xy": pose_covariance_xy,
+                    "pose_covariance_yaw": pose_covariance_yaw,
+                    "twist_covariance_vx": twist_covariance_vx,
+                    "twist_covariance_vy": twist_covariance_vy,
+                    "twist_covariance_yaw_rate": twist_covariance_yaw_rate,
+                    "ekf_local": ekf_local,
+                    "ekf_global": ekf_global,
+                    "ukf": ukf,
+                    "datum_setter": datum_setter,
+                    "gps_profile": effective_gps_profile,
+                    "enable_gps_course_heading": enable_gps_course_heading,
+                    "gps_course_heading_min_distance_m": gps_course_heading_min_distance_m,
+                    "gps_course_heading_min_speed_mps": gps_course_heading_min_speed_mps,
+                    "gps_course_heading_max_abs_steer_deg": gps_course_heading_max_abs_steer_deg,
+                    "gps_course_heading_max_abs_yaw_rate_rps": gps_course_heading_max_abs_yaw_rate_rps,
+                    "gps_course_heading_publish_hz": gps_course_heading_publish_hz,
+                    "gps_course_heading_yaw_variance_rad2": gps_course_heading_yaw_variance_rad2,
+                    "gps_course_heading_sample_dt_min_s": gps_course_heading_sample_dt_min_s,
+                    "gps_course_heading_sample_dt_max_s": gps_course_heading_sample_dt_max_s,
+                    "gps_course_heading_max_pair_distance_base_m": gps_course_heading_max_pair_distance_base_m,
+                    "gps_course_heading_max_pair_distance_speed_gain": gps_course_heading_max_pair_distance_speed_gain,
+                    "gps_course_heading_max_pair_speed_error_mps": gps_course_heading_max_pair_speed_error_mps,
+                    "gps_course_heading_heading_change_base_deg": gps_course_heading_heading_change_base_deg,
+                    "gps_course_heading_heading_change_yaw_rate_gain": gps_course_heading_heading_change_yaw_rate_gain,
+                    "gps_course_heading_candidates": gps_course_heading_candidates,
+                    "gps_course_heading_max_heading_dispersion_deg": gps_course_heading_max_heading_dispersion_deg,
+                    "gps_course_heading_enable_consistency_filters": gps_course_heading_enable_consistency_filters,
+                    "gps_course_heading_enable_offset_compensation": gps_course_heading_enable_offset_compensation,
+                    "gps_course_heading_gps_frame": gps_course_heading_gps_frame,
+                    "gps_course_heading_transform_timeout_s": gps_course_heading_transform_timeout_s,
+                }.items(),
+            ),
+            Node(
+                package="navegacion_gps",
+                executable="zones_manager",
+                name="zones_manager",
+                output="screen",
+                parameters=[
+                    {
+                        "map_frame": "map",
+                        "fromll_target_frame": "map",
+                        "fromll_output_frame": "map",
+                        "set_geojson_service": "/zones_manager/set_geojson",
+                        "get_state_service": "/zones_manager/get_state",
+                        "reload_from_disk_service": "/zones_manager/reload_from_disk",
+                    }
+                ],
+            ),
+            Node(
+                package="navegacion_gps",
+                executable="nav_snapshot_server",
+                name="nav_snapshot_server",
+                output="screen",
+                parameters=[
+                    {
+                        "get_snapshot_service": "/nav_snapshot_server/get_nav_snapshot",
+                    }
+                ],
+            ),
+        ]
+    )

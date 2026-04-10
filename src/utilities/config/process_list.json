@@ -6,6 +6,16 @@
       "cwd": "/ros2_ws"
     },
     {
+      "label": "📌 LANZAR NAVEGACION (sin requerir fix especifico)",
+      "command": "ros2 launch navegacion_gps real.launch.py datum_setter:=True zones_manager:=False use_robot_state_publisher:=True require_rtk_before_navigation:=False",
+      "cwd": "/ros2_ws"
+    },
+    {
+      "label": "📌 LANZAR NAVEGACION (con fix requerido)",
+      "command": "ros2 launch navegacion_gps real.launch.py datum_setter:=True zones_manager:=False use_robot_state_publisher:=True require_rtk_before_navigation:=True",
+      "cwd": "/ros2_ws"
+    },
+    {
       "label": "🎥 ROSBAG CORE",
       "command": "ros2 bag record -o /ros2_ws/log/bags/nav_debug_core_$(date -u +%Y%m%d_%H%M%S) /gps/fix /odometry/local /odometry/gps /imu/data /scan /cmd_vel /cmd_vel_safe /cmd_vel_final /collision_monitor_state /nav_command_server/telemetry /nav_command_server/events /controller/status /controller/telemetry /diagnostics /tf /tf_static /rosout",
       "cwd": "/ros2_ws"
