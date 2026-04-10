@@ -6,7 +6,7 @@
       "properties": {
         "id": "zone.1775440719797.4598",
         "type": "no_go",
-        "enabled": true
+        "enabled": false
       },
       "geometry": {
         "type": "Polygon",
@@ -41,7 +41,7 @@
       "properties": {
         "id": "zone.1775264044685.4052",
         "type": "no_go",
-        "enabled": true
+        "enabled": false
       },
       "geometry": {
         "type": "Polygon",
@@ -84,7 +84,7 @@
       "properties": {
         "id": "zone_1",
         "type": "no_go",
-        "enabled": true
+        "enabled": false
       },
       "geometry": {
         "type": "Polygon",

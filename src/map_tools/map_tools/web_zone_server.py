@@ -37,6 +37,11 @@ from rosidl_runtime_py.utilities import get_message
 from pyproj import Geod
 
 try:
+    from geographic_msgs.msg import GeoPointStamped
+except ImportError:
+    GeoPointStamped = None
+
+try:
     from mavros_msgs.msg import GPSRAW
 except ImportError:
     GPSRAW = None
@@ -925,6 +930,7 @@ class WebZoneServerNode(Node):
         self.declare_parameter("rtcm_age_topic", "/gps/rtcm_age_s")
         self.declare_parameter("rtcm_count_topic", "/gps/rtcm_received_count")
         self.declare_parameter("gps_raw_topic", "/mavros_node/gps1/raw")
+        self.declare_parameter("mavros_datum_topic", "/mavros_node/gp_origin")
         self.declare_parameter("rtk_source_status_topic", "/gps/rtk_source/status_json")
         self.declare_parameter("nav_get_datum_service", "/datum_setter/get_datum")
 
@@ -993,6 +999,7 @@ class WebZoneServerNode(Node):
         self.info_rtcm_age_topic = str(self.get_parameter("rtcm_age_topic").value)
         self.info_rtcm_count_topic = str(self.get_parameter("rtcm_count_topic").value)
         self.info_gps_raw_topic = str(self.get_parameter("gps_raw_topic").value)
+        self.mavros_datum_topic = str(self.get_parameter("mavros_datum_topic").value)
         self.info_rtk_source_status_topic = str(
             self.get_parameter("rtk_source_status_topic").value
         )
@@ -1007,6 +1014,9 @@ class WebZoneServerNode(Node):
         self._last_robot_pose: Optional[Dict[str, float]] = None
         self._last_robot_heading_deg: Optional[float] = None
         self._last_gps_broadcast_monotonic: Optional[float] = None
+        self._mavros_datum_lat: Optional[float] = None
+        self._mavros_datum_lon: Optional[float] = None
+        self._mavros_datum_stamp: Any = None
 
         self._zones: List[Dict[str, Any]] = []
         self._zones_geojson: Dict[str, Any] = {"type": "FeatureCollection", "features": []}
@@ -1051,6 +1061,14 @@ class WebZoneServerNode(Node):
         self._gps_sub = self.create_subscription(
             NavSatFix, self.gps_topic, self._on_gps_fix, qos_profile_sensor_data
         )
+        self._mavros_datum_sub = None
+        if GeoPointStamped is not None:
+            self._mavros_datum_sub = self.create_subscription(
+                GeoPointStamped,
+                self.mavros_datum_topic,
+                self._on_mavros_datum,
+                qos_profile_sensor_data,
+            )
         self._robot_heading_sub = self.create_subscription(
             Odometry,
             self.robot_heading_topic,
@@ -1122,6 +1140,7 @@ class WebZoneServerNode(Node):
             f"camera_status={self.camera_status_service}, "
             f"get_datum={self.nav_get_datum_service}, "
             f"teleop_topic={self.teleop_cmd_topic}, gps_topic={self.gps_topic}, "
+            f"mavros_datum_topic={self.mavros_datum_topic}, "
             f"odom_topic={self.odom_topic}, "
             f"robot_heading_topic={self.robot_heading_topic})"
         )
@@ -1238,6 +1257,9 @@ class WebZoneServerNode(Node):
     def get_datum_info(self) -> Dict[str, Any]:
         req = GetDatum.Request()
         res = self._call_service(self._nav_get_datum_client, req, self.request_timeout_s)
+        with self._lock:
+            mavros_datum_lat = self._mavros_datum_lat
+            mavros_datum_lon = self._mavros_datum_lon
         if res is None:
             return {
                 "ok": False,
@@ -1247,8 +1269,8 @@ class WebZoneServerNode(Node):
                 "gps_is_rtk": False,
                 "current_gps_lat": None,
                 "current_gps_lon": None,
-                "datum_lat": None,
-                "datum_lon": None,
+                "datum_lat": _finite_or_none(mavros_datum_lat),
+                "datum_lon": _finite_or_none(mavros_datum_lon),
                 "last_set_stamp": None,
                 "last_set_epoch_ms": None,
                 "last_set_source": "",
@@ -1258,8 +1280,12 @@ class WebZoneServerNode(Node):
         last_set_stamp = getattr(res, "last_set_stamp", None)
         current_lat = _finite_or_none(getattr(res, "current_gps_lat", None))
         current_lon = _finite_or_none(getattr(res, "current_gps_lon", None))
-        datum_lat = _finite_or_none(getattr(res, "datum_lat", None))
-        datum_lon = _finite_or_none(getattr(res, "datum_lon", None))
+        datum_lat = _finite_or_none(mavros_datum_lat)
+        datum_lon = _finite_or_none(mavros_datum_lon)
+        if datum_lat is None:
+            datum_lat = _finite_or_none(getattr(res, "datum_lat", None))
+        if datum_lon is None:
+            datum_lon = _finite_or_none(getattr(res, "datum_lon", None))
         return {
             "ok": bool(getattr(res, "ok", False)),
             "error": str(getattr(res, "error", "") or ""),
@@ -1678,6 +1704,16 @@ class WebZoneServerNode(Node):
 
         payload = {"op": "robot_pose", "pose": pose}
         asyncio.run_coroutine_threadsafe(self._broadcast(payload), self._loop)
+
+    def _on_mavros_datum(self, msg: GeoPointStamped) -> None:
+        latitude = _finite_or_none(getattr(getattr(msg, "position", None), "latitude", None))
+        longitude = _finite_or_none(getattr(getattr(msg, "position", None), "longitude", None))
+        if latitude is None or longitude is None:
+            return
+        with self._lock:
+            self._mavros_datum_lat = latitude
+            self._mavros_datum_lon = longitude
+            self._mavros_datum_stamp = getattr(msg, "header", None)
 
     def _yaw_deg_from_quaternion(
         self, x: float, y: float, z: float, w: float

@@ -236,6 +236,29 @@ class _FakeSetDatumNode:
         return self._response
 
 
+class _FakeGetDatumRequest:
+    pass
+
+
+class _FakeGetDatum:
+    Request = _FakeGetDatumRequest
+
+
+class _FakeGetDatumNode:
+    get_datum_info = WebZoneServerNode.get_datum_info
+
+    def __init__(self, response) -> None:
+        self._lock = threading.Lock()
+        self._nav_get_datum_client = object()
+        self.request_timeout_s = 5.0
+        self._response = response
+        self._mavros_datum_lat = None
+        self._mavros_datum_lon = None
+
+    def _call_service(self, _client, _request, _timeout_s):
+        return self._response
+
+
 def test_set_datum_current_sends_empty_coords_and_propagates_success() -> None:
     original = WebZoneServerNode.set_datum_current.__globals__["SetDatum"]
     WebZoneServerNode.set_datum_current.__globals__["SetDatum"] = _FakeSetDatum
@@ -278,6 +301,59 @@ def test_set_datum_current_error_propagates_backend_error() -> None:
         assert err == "no GPS sample"
     finally:
         WebZoneServerNode.set_datum_current.__globals__["SetDatum"] = original
+
+
+def test_get_datum_info_prefers_mavros_datum_lat_lon() -> None:
+    original = WebZoneServerNode.get_datum_info.__globals__["GetDatum"]
+    WebZoneServerNode.get_datum_info.__globals__["GetDatum"] = _FakeGetDatum
+    try:
+        response = type(
+            "Res",
+            (),
+            {
+                "ok": True,
+                "error": "",
+                "already_set": True,
+                "has_current_gps": True,
+                "gps_is_rtk": True,
+                "current_gps_lat": -31.0,
+                "current_gps_lon": -64.0,
+                "datum_lat": -30.0,
+                "datum_lon": -63.0,
+                "last_set_stamp": None,
+                "last_set_source": "service_current_gps",
+                "last_set_with_rtk": True,
+            },
+        )()
+        node = _FakeGetDatumNode(response=response)
+        node._mavros_datum_lat = -31.5
+        node._mavros_datum_lon = -64.5
+
+        out = node.get_datum_info()
+
+        assert out["datum_lat"] == -31.5
+        assert out["datum_lon"] == -64.5
+        assert out["last_set_source"] == "service_current_gps"
+    finally:
+        WebZoneServerNode.get_datum_info.__globals__["GetDatum"] = original
+
+
+def test_get_datum_info_timeout_still_returns_mavros_datum_lat_lon() -> None:
+    original = WebZoneServerNode.get_datum_info.__globals__["GetDatum"]
+    WebZoneServerNode.get_datum_info.__globals__["GetDatum"] = _FakeGetDatum
+    try:
+        node = _FakeGetDatumNode(response=None)
+        node._mavros_datum_lat = -31.6
+        node._mavros_datum_lon = -64.6
+
+        out = node.get_datum_info()
+
+        assert out["ok"] is False
+        assert out["error"] == "get_datum timeout"
+        assert out["datum_lat"] == -31.6
+        assert out["datum_lon"] == -64.6
+    finally:
+        WebZoneServerNode.get_datum_info.__globals__["GetDatum"] = original
 
 
 def test_sensor_info_fix_quality_and_precision_mapping_matches_contract() -> None:

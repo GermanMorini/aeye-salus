@@ -44,7 +44,7 @@ def test_bootup_launch_exposes_expected_arguments() -> None:
     assert 'DeclareLaunchArgument("ws_port", default_value="8766")' in launch_contents
     assert 'DeclareLaunchArgument("gps_topic", default_value="/gps/fix")' in launch_contents
     assert 'DeclareLaunchArgument("map_frame", default_value="map")' in launch_contents
-    assert 'DeclareLaunchArgument("fromll_output_frame", default_value="map")' in launch_contents
+    assert 'DeclareLaunchArgument("fromll_output_frame", default_value="odom")' in launch_contents
     assert 'DeclareLaunchArgument("cmd_vel_safe_topic", default_value="/cmd_vel_safe")' in launch_contents
     assert 'DeclareLaunchArgument("cmd_vel_final_topic", default_value="/cmd_vel_final")' in launch_contents
     assert 'DeclareLaunchArgument("teleop_cmd_topic", default_value="/cmd_vel_teleop")' in launch_contents

@@ -58,7 +58,7 @@ class NavCommandServerNode(Node):
         self.declare_parameter("approx_fromll_datum_yaw_deg", 0.0)
         self.declare_parameter("approx_fromll_zero_threshold_m", 1.0e-3)
         self.declare_parameter("approx_fromll_min_distance_for_fallback_m", 0.5)
-        self.declare_parameter("fromll_output_frame", "")
+        self.declare_parameter("fromll_output_frame", "odom")
         self.declare_parameter("fromll_frame", "odom")
         self.declare_parameter("map_frame", "map")
         self.declare_parameter("tf_lookup_timeout_s", 0.5)

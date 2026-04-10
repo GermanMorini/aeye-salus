@@ -50,7 +50,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("ws_port", default_value="8766"),
             DeclareLaunchArgument("gps_topic", default_value="/gps/fix"),
             DeclareLaunchArgument("map_frame", default_value="map"),
-            DeclareLaunchArgument("fromll_output_frame", default_value="map"),
+            DeclareLaunchArgument("fromll_output_frame", default_value="odom"),
             DeclareLaunchArgument("cmd_vel_safe_topic", default_value="/cmd_vel_safe"),
             DeclareLaunchArgument("cmd_vel_final_topic", default_value="/cmd_vel_final"),
             DeclareLaunchArgument("teleop_cmd_topic", default_value="/cmd_vel_teleop"),
