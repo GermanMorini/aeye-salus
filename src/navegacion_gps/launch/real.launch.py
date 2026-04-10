@@ -35,17 +35,6 @@ def _resolve_config_file_path(package_share_dir: str, filename: str) -> str:
     return str(default_path)
 
 
-def _validate_telemetry_backend(context):
-    telemetry_backend = LaunchConfiguration("telemetry_backend").perform(context)
-    valid_backends = {"mavros", "pixhawk_driver"}
-    if telemetry_backend not in valid_backends:
-        raise RuntimeError(
-            "telemetry_backend must be one of "
-            f"{sorted(valid_backends)}, got {telemetry_backend!r}"
-        )
-    return []
-
-
 def _as_bool(value: str) -> bool:
     return str(value).strip().lower() == "true"
 
@@ -169,19 +158,13 @@ def _build_navigation_startup(
 
 def generate_launch_description():
     gps_wpf_dir = get_package_share_directory("navegacion_gps")
-    map_tools_dir = get_package_share_directory("map_tools")
-    sensores_dir = get_package_share_directory("sensores")
 
     zones_geojson_path = _resolve_config_file_path(gps_wpf_dir, "no_go_zones.geojson")
     keepout_mask_image_path = _resolve_config_file_path(gps_wpf_dir, "keepout_mask.pgm")
     keepout_mask_yaml_path = _resolve_config_file_path(gps_wpf_dir, "keepout_mask.yaml")
     rl_params_file = _resolve_config_file_path(gps_wpf_dir, "dual_ekf_navsat_params.yaml")
     nav2_params_file = _resolve_config_file_path(gps_wpf_dir, "nav2_no_map_params.yaml")
-    lidar_to_scan_params = _resolve_config_file_path(
-        gps_wpf_dir, "pointcloud_to_laserscan.yaml"
-    )
     rviz_default = _resolve_config_file_path(gps_wpf_dir, "rviz_nav2_full.rviz")
-    lidar_default_config = os.path.join(sensores_dir, "config", "rs16.yaml")
 
     use_sim_time = LaunchConfiguration("use_sim_time")
     use_robot_state_publisher = LaunchConfiguration("use_robot_state_publisher")
@@ -190,42 +173,16 @@ def generate_launch_description():
     rviz_config = LaunchConfiguration("rviz_config")
     use_collision_monitor = LaunchConfiguration("use_collision_monitor")
     use_gazebo_utils = LaunchConfiguration("use_gazebo_utils")
-    use_pointcloud_to_laserscan = LaunchConfiguration("use_pointcloud_to_laserscan")
-    telemetry_backend = LaunchConfiguration("telemetry_backend")
-    start_lidar = LaunchConfiguration("start_lidar")
-    launch_web = LaunchConfiguration("launch_web")
-    enable_rtk = LaunchConfiguration("enable_rtk")
-    enable_gps_rtk = LaunchConfiguration("enable_gps_rtk")
-    enable_rtcm_tcp = LaunchConfiguration("enable_rtcm_tcp")
-    enable_rtk_source_manager = LaunchConfiguration("enable_rtk_source_manager")
-    rtcm_tcp_host = LaunchConfiguration("rtcm_tcp_host")
-    rtcm_tcp_port = LaunchConfiguration("rtcm_tcp_port")
-    rtcm_topic = LaunchConfiguration("rtcm_topic")
-    lidar_config_path = LaunchConfiguration("lidar_config_path")
-    ws_host = LaunchConfiguration("ws_host")
-    ws_port = LaunchConfiguration("ws_port")
     gps_topic = LaunchConfiguration("gps_topic")
     rtk_status_topic = LaunchConfiguration("rtk_status_topic")
     fix_type_topic = LaunchConfiguration("fix_type_topic")
     required_fix_type = LaunchConfiguration("required_fix_type")
     map_frame = LaunchConfiguration("map_frame")
     zones_manager = LaunchConfiguration("zones_manager")
-    datum_setter = LaunchConfiguration("datum_setter")
     ackermann_odometry = LaunchConfiguration("ackermann_odometry")
     ekf_local = LaunchConfiguration("ekf_local")
     ekf_global = LaunchConfiguration("ekf_global")
     ukf = LaunchConfiguration("ukf")
-    enable_gps_course_heading = LaunchConfiguration("enable_gps_course_heading")
-    gps_course_heading_enable_consistency_filters = LaunchConfiguration(
-        "gps_course_heading_enable_consistency_filters"
-    )
-    gps_course_heading_enable_offset_compensation = LaunchConfiguration(
-        "gps_course_heading_enable_offset_compensation"
-    )
-    gps_course_heading_gps_frame = LaunchConfiguration("gps_course_heading_gps_frame")
-    gps_course_heading_transform_timeout_s = LaunchConfiguration(
-        "gps_course_heading_transform_timeout_s"
-    )
     localization_filter_executable = PythonExpression(
         ["'ukf_node' if '", ukf, "'.lower() == 'true' else 'ekf_node'"]
     )
@@ -281,76 +238,6 @@ def generate_launch_description():
         default_value="False",
         description="Whether to run gazebo_utils for frame normalization",
     )
-    declare_use_pointcloud_to_laserscan_cmd = DeclareLaunchArgument(
-        "use_pointcloud_to_laserscan",
-        default_value="True",
-        description="Whether to start pointcloud_to_laserscan",
-    )
-    declare_telemetry_backend_cmd = DeclareLaunchArgument(
-        "telemetry_backend",
-        default_value="mavros",
-        description="Pixhawk telemetry backend: mavros or pixhawk_driver",
-    )
-    declare_start_lidar_cmd = DeclareLaunchArgument(
-        "start_lidar",
-        default_value="True",
-        description="Start RS16 LiDAR driver",
-    )
-    declare_launch_web_cmd = DeclareLaunchArgument(
-        "launch_web",
-        default_value="False",
-        description="Start sensores_web node",
-    )
-    declare_enable_rtk_cmd = DeclareLaunchArgument(
-        "enable_rtk",
-        default_value="false",
-        description="Enable MAVROS RTK bridge that feeds RTCM to the FCU",
-    )
-    declare_enable_gps_rtk_cmd = DeclareLaunchArgument(
-        "enable_gps_rtk",
-        default_value="true",
-        description="Enable optional GPS RTK diagnostics when using pixhawk_driver",
-    )
-    declare_enable_rtcm_tcp_cmd = DeclareLaunchArgument(
-        "enable_rtcm_tcp",
-        default_value="true",
-        description="Read RTCM corrections from a TCP source in the selected telemetry backend",
-    )
-    declare_enable_rtk_source_manager_cmd = DeclareLaunchArgument(
-        "enable_rtk_source_manager",
-        default_value="false",
-        description="Enable RTK source manager when using MAVROS backend",
-    )
-    declare_rtcm_tcp_host_cmd = DeclareLaunchArgument(
-        "rtcm_tcp_host",
-        default_value="127.0.0.1",
-        description="Host for the incoming RTCM TCP stream",
-    )
-    declare_rtcm_tcp_port_cmd = DeclareLaunchArgument(
-        "rtcm_tcp_port",
-        default_value="2102",
-        description="Port for the incoming RTCM TCP stream",
-    )
-    declare_rtcm_topic_cmd = DeclareLaunchArgument(
-        "rtcm_topic",
-        default_value="/rtcm",
-        description="Optional ROS topic carrying RTCM corrections",
-    )
-    declare_lidar_config_path_cmd = DeclareLaunchArgument(
-        "lidar_config_path",
-        default_value=lidar_default_config,
-        description="Path to rs16 YAML config",
-    )
-    declare_ws_host_cmd = DeclareLaunchArgument(
-        "ws_host",
-        default_value="0.0.0.0",
-        description="WebSocket host for map_tools web gateway",
-    )
-    declare_ws_port_cmd = DeclareLaunchArgument(
-        "ws_port",
-        default_value="8766",
-        description="WebSocket port for map_tools web gateway",
-    )
     declare_gps_topic_cmd = DeclareLaunchArgument(
         "gps_topic",
         default_value="/gps/fix",
@@ -384,11 +271,6 @@ def generate_launch_description():
         default_value="true",
         description="Enable zones_manager node",
     )
-    declare_datum_setter_cmd = DeclareLaunchArgument(
-        "datum_setter",
-        default_value="true",
-        description="Enable datum_setter node",
-    )
     declare_ackermann_odometry_cmd = DeclareLaunchArgument(
         "ackermann_odometry",
         default_value="true",
@@ -408,31 +290,6 @@ def generate_launch_description():
         "ukf",
         default_value="True",
         description="Use UKF for local/global robot_localization filters; if false, use EKF",
-    )
-    declare_enable_gps_course_heading_cmd = DeclareLaunchArgument(
-        "enable_gps_course_heading",
-        default_value="true",
-        description="Enable gps_course_heading when ekf_global is active",
-    )
-    declare_gps_course_heading_enable_consistency_filters_cmd = DeclareLaunchArgument(
-        "gps_course_heading_enable_consistency_filters",
-        default_value="true",
-        description="Enable advanced gps_course_heading consistency filters",
-    )
-    declare_gps_course_heading_enable_offset_compensation_cmd = DeclareLaunchArgument(
-        "gps_course_heading_enable_offset_compensation",
-        default_value="true",
-        description="Enable gps_course_heading antenna offset compensation via TF",
-    )
-    declare_gps_course_heading_gps_frame_cmd = DeclareLaunchArgument(
-        "gps_course_heading_gps_frame",
-        default_value="gps_link",
-        description="GPS frame resolved against base_footprint to compensate antenna offset",
-    )
-    declare_gps_course_heading_transform_timeout_s_cmd = DeclareLaunchArgument(
-        "gps_course_heading_transform_timeout_s",
-        default_value="0.2",
-        description="TF lookup timeout for gps_course_heading antenna offset compensation",
     )
     declare_require_rtk_before_navigation_cmd = DeclareLaunchArgument(
         "require_rtk_before_navigation",
@@ -524,83 +381,6 @@ def generate_launch_description():
             ("odometry/filtered", "odometry/local"),
         ],
     )
-    # Block 3 - Sensors
-    datum_setter_cmd = Node(
-        package="navegacion_gps",
-        executable="datum_setter",
-        name="datum_setter",
-        output="screen",
-        parameters=[
-            {
-                "gps_topic": gps_topic,
-                "imu_topic": "/imu/data",
-                "rtk_status_topic": rtk_status_topic,
-                "set_datum_service": "/datum_setter/set_datum",
-                "get_datum_service": "/datum_setter/get_datum",
-                "datum_service": "/datum",
-                "datum_service_fallback": "/navsat_transform/datum",
-                "imu_yaw_max_age_s": 1.0,
-                "datum_wait_timeout_s": 2.0,
-                "datum_call_timeout_s": 2.5,
-                "datum_call_retries": 3,
-                "datum_retry_delay_s": 0.15,
-            }
-        ],
-        condition=IfCondition(
-            PythonExpression(["'", datum_setter, "'.lower() == 'true'"])
-        ),
-    )
-    gps_course_heading_cmd = Node(
-        package="navegacion_gps",
-        executable="gps_course_heading",
-        name="gps_course_heading",
-        output="screen",
-        condition=IfCondition(
-            PythonExpression(
-                [
-                    "'",
-                    ekf_global,
-                    "'.lower() == 'true' and '",
-                    enable_gps_course_heading,
-                    "'.lower() == 'true'",
-                ]
-            )
-        ),
-        parameters=[
-            {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)},
-            {"gps_topic": gps_topic},
-            {"odom_topic": "/odometry/local"},
-            {"drive_telemetry_topic": "/controller/drive_telemetry"},
-            {"output_topic": "/gps/course_heading"},
-            {"debug_topic": "/gps/course_heading/debug"},
-            {"base_frame": "base_footprint"},
-            {
-                "enable_consistency_filters": ParameterValue(
-                    gps_course_heading_enable_consistency_filters,
-                    value_type=bool,
-                )
-            },
-            {
-                "enable_offset_compensation": ParameterValue(
-                    gps_course_heading_enable_offset_compensation,
-                    value_type=bool,
-                )
-            },
-            {
-                "gps_frame": ParameterValue(
-                    gps_course_heading_gps_frame,
-                    value_type=str,
-                )
-            },
-            {
-                "transform_timeout_s": ParameterValue(
-                    gps_course_heading_transform_timeout_s,
-                    value_type=float,
-                )
-            },
-        ],
-    )
-
     # Block 6 - Navigation Support And Web
     zones_manager_cmd = Node(
         package="navegacion_gps",
@@ -636,40 +416,6 @@ def generate_launch_description():
                 "mask_width": 3000,
                 "mask_height": 3000,
                 "mask_resolution": 0.1,
-            }
-        ],
-    )
-    nav_command_server_cmd = Node(
-        package="navegacion_gps",
-        executable="nav_command_server",
-        name="nav_command_server",
-        output="screen",
-        parameters=[
-            {
-                "fromll_service": "/fromLL",
-                "fromll_service_fallback": "/navsat_transform/fromLL",
-                "fromll_wait_timeout_s": 2.0,
-                "fromll_output_frame": "map",
-                "map_frame": resolved_map_frame,
-                "gps_topic": gps_topic,
-                "cmd_vel_safe_topic": "/cmd_vel_safe",
-                "cmd_vel_final_topic": "/cmd_vel_final",
-                "forward_cmd_vel_safe_without_goal": True,
-                "brake_topic": "/cmd_vel_safe",
-                "manual_cmd_topic": "/cmd_vel_safe",
-                "teleop_cmd_topic": "/cmd_vel_teleop",
-                "brake_publish_count": 5,
-                "brake_publish_interval_s": 0.1,
-                "manual_cmd_timeout_s": 0.4,
-                "manual_watchdog_hz": 10.0,
-                "nav_telemetry_hz": 5.0,
-                "telemetry_topic": "/nav_command_server/telemetry",
-                "event_topic": "/nav_command_server/events",
-                "set_goal_service": "/nav_command_server/set_goal_ll",
-                "cancel_goal_service": "/nav_command_server/cancel_goal",
-                "brake_service": "/nav_command_server/brake",
-                "set_manual_mode_service": "/nav_command_server/set_manual_mode",
-                "get_state_service": "/nav_command_server/get_state",
             }
         ],
     )
@@ -710,25 +456,6 @@ def generate_launch_description():
         ],
     )
 
-    no_go_editor_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(map_tools_dir, "launch", "no_go_editor.launch.py")
-        ),
-        launch_arguments={
-            "ws_host": ws_host,
-            "ws_port": ws_port,
-            "gps_topic": gps_topic,
-            "map_frame": resolved_map_frame,
-            "launch_zones_manager": "false",
-            "launch_nav_command_server": "false",
-            "launch_nav_snapshot_server": "false",
-            "teleop_cmd_topic": "/cmd_vel_teleop",
-            "zones_set_geojson_service": "/zones_manager/set_geojson",
-            "zones_get_state_service": "/zones_manager/get_state",
-            "zones_reload_service": "/zones_manager/reload_from_disk",
-        }.items(),
-    )
-
     # Block 7 - Optional Runtime Utilities
     gazebo_utils_cmd = Node(
         package="navegacion_gps",
@@ -751,72 +478,6 @@ def generate_launch_description():
         condition=IfCondition(use_gazebo_utils),
     )
 
-    lidar_to_scan_cmd = Node(
-        package="pointcloud_to_laserscan",
-        executable="pointcloud_to_laserscan_node",
-        name="pointcloud_to_laserscan",
-        output="screen",
-        parameters=[
-            lidar_to_scan_params,
-            {"use_sim_time": ParameterValue(use_sim_time, value_type=bool)},
-            {"output_qos": "sensor_data"},
-        ],
-        remappings=[("cloud_in", "/scan_3d"), ("scan", "/scan")],
-        condition=IfCondition(use_pointcloud_to_laserscan),
-    )
-
-    # Block 3 - Sensors
-    mavros_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(sensores_dir, "launch", "mavros.launch.py")
-        ),
-        launch_arguments={
-            "launch_web": launch_web,
-            "launch_legacy_compat": "true",
-            "enable_rtk": enable_rtk,
-            "enable_rtcm_tcp": enable_rtcm_tcp,
-            "enable_rtk_source_manager": enable_rtk_source_manager,
-            "rtcm_tcp_host": rtcm_tcp_host,
-            "rtcm_tcp_port": rtcm_tcp_port,
-            "rtcm_topic": rtcm_topic,
-        }.items(),
-        condition=IfCondition(
-            PythonExpression(["'", telemetry_backend, "' == 'mavros'"])
-        ),
-    )
-
-    pixhawk_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(sensores_dir, "launch", "pixhawk.launch.py")
-        ),
-        launch_arguments={
-            "launch_web": launch_web,
-            "enable_gps_rtk": enable_gps_rtk,
-            "enable_rtcm_tcp": enable_rtcm_tcp,
-            "rtcm_tcp_host": rtcm_tcp_host,
-            "rtcm_tcp_port": rtcm_tcp_port,
-            "rtcm_topic": rtcm_topic,
-        }.items(),
-        condition=IfCondition(
-            PythonExpression(["'", telemetry_backend, "' == 'pixhawk_driver'"])
-        ),
-    )
-
-    camera_cmd = Node(
-        package="sensores",
-        executable="camara",
-        name="camara",
-        output="screen",
-    )
-
-    lidar_cmd = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(sensores_dir, "launch", "rs16.launch.py")
-        ),
-        launch_arguments={"config_path": lidar_config_path}.items(),
-        condition=IfCondition(start_lidar),
-    )
-
     delayed_start_actions = [
         # Block 4 - Localization
         ackermann_odometry_cmd,
@@ -827,10 +488,8 @@ def generate_launch_description():
         nav2_only_cmd,
         # Block 6 - Navigation Support And Web
         zones_manager_cmd,
-        nav_command_server_cmd,
         nav_snapshot_server_cmd,
         nav_observability_cmd,
-        no_go_editor_cmd,
         # Block 7 - Optional Runtime Utilities
         gazebo_utils_cmd,
     ]
@@ -855,54 +514,24 @@ def generate_launch_description():
     ld.add_action(declare_use_navsat_cmd)
     ld.add_action(declare_use_collision_monitor_cmd)
     ld.add_action(declare_use_gazebo_utils_cmd)
-    ld.add_action(declare_use_pointcloud_to_laserscan_cmd)
-    ld.add_action(declare_telemetry_backend_cmd)
-    ld.add_action(declare_start_lidar_cmd)
-    ld.add_action(declare_launch_web_cmd)
-    ld.add_action(declare_enable_rtk_cmd)
-    ld.add_action(declare_enable_gps_rtk_cmd)
-    ld.add_action(declare_enable_rtcm_tcp_cmd)
-    ld.add_action(declare_enable_rtk_source_manager_cmd)
-    ld.add_action(declare_rtcm_tcp_host_cmd)
-    ld.add_action(declare_rtcm_tcp_port_cmd)
-    ld.add_action(declare_rtcm_topic_cmd)
-    ld.add_action(declare_lidar_config_path_cmd)
-    ld.add_action(declare_ws_host_cmd)
-    ld.add_action(declare_ws_port_cmd)
     ld.add_action(declare_gps_topic_cmd)
     ld.add_action(declare_rtk_status_topic_cmd)
     ld.add_action(declare_fix_type_topic_cmd)
     ld.add_action(declare_required_fix_type_cmd)
     ld.add_action(declare_map_frame_cmd)
     ld.add_action(declare_zones_manager_cmd)
-    ld.add_action(declare_datum_setter_cmd)
     ld.add_action(declare_ackermann_odometry_cmd)
     ld.add_action(declare_ekf_local_cmd)
     ld.add_action(declare_ekf_global_cmd)
     ld.add_action(declare_ukf_cmd)
-    ld.add_action(declare_enable_gps_course_heading_cmd)
-    ld.add_action(declare_gps_course_heading_enable_consistency_filters_cmd)
-    ld.add_action(declare_gps_course_heading_enable_offset_compensation_cmd)
-    ld.add_action(declare_gps_course_heading_gps_frame_cmd)
-    ld.add_action(declare_gps_course_heading_transform_timeout_s_cmd)
     ld.add_action(declare_require_rtk_before_navigation_cmd)
     ld.add_action(declare_rtk_gate_timeout_s_cmd)
     # Block 2 - Launch Validation
-    ld.add_action(OpaqueFunction(function=_validate_telemetry_backend))
     ld.add_action(
         OpaqueFunction(
             function=lambda context: _validate_tf_configuration(context, nav2_params_file)
         )
     )
-
-    # Block 3 - Sensors
-    ld.add_action(mavros_cmd)
-    ld.add_action(pixhawk_cmd)
-    ld.add_action(camera_cmd)
-    ld.add_action(lidar_cmd)
-    ld.add_action(lidar_to_scan_cmd)
-    ld.add_action(gps_course_heading_cmd)
-    ld.add_action(datum_setter_cmd)
     ld.add_action(delayed_start_cmd)
 
     return ld

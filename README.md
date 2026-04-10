@@ -17,6 +17,7 @@ Cada paquete bajo `src/` es un repositorio git anidado. Revisa estado y rama por
 
 ## Launches canónicos
 - `ros2 launch navegacion_gps simulacion.launch.py`
+- `ros2 launch sensores real.launch.py`
 - `ros2 launch navegacion_gps real.launch.py`
 - `ros2 launch navegacion_gps rviz_real.launch.py`
 - `ros2 launch sensores pixhawk.launch.py`
@@ -55,7 +56,7 @@ docker compose up -d --build
 - `./tools/exec.sh`: shell o comando dentro del contenedor.
 - `./tools/root-exec.sh`: shell como root dentro del contenedor.
 - `./tools/compile-ros.sh`: build con `colcon`.
-- `./tools/launch_real_nav.sh`: levanta `navegacion_gps real.launch.py`.
+- `./tools/launch_real_nav.sh`: levanta solo `navegacion_gps real.launch.py`.
 - `./tools/launch_real_rviz.sh`: levanta `navegacion_gps rviz_real.launch.py`.
 - `./tools/launch_controller.sh`: levanta `controller_server controller_server.launch.py`.
 - `./tools/launch_no_go_editor.sh`: levanta `map_tools no_go_editor.launch.py`.
@@ -76,6 +77,7 @@ Smoke de ejecutables:
 
 Smoke de launches:
 ```bash
+./tools/exec.sh "source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && ros2 launch sensores real.launch.py --show-args"
 ./tools/exec.sh "source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && ros2 launch navegacion_gps real.launch.py --show-args"
 ./tools/exec.sh "source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && ros2 launch navegacion_gps simulacion.launch.py --show-args"
 ./tools/exec.sh "source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && ros2 launch navegacion_gps rviz_real.launch.py --show-args"

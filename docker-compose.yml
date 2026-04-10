@@ -1,12 +1,12 @@
 services:
-  ros2:
+  ros2-german:
     build:
       context: .
       args:
         USER_UID: ${UID:-1000}
         USER_GID: ${GID:-1000}
     image: ros2-humble-perception-ws
-    container_name: ros2
+    container_name: ros2-german
     network_mode: host
     privileged: true
     restart: unless-stopped
@@ -32,33 +32,33 @@ services:
       - GZ_SIM_RESOURCE_PATH=/opt/ros/humble/share:/home/ros/ws/install:/home/ros/ws/src
       - IGN_GAZEBO_RESOURCE_PATH=/opt/ros/humble/share:/home/ros/ws/install:/home/ros/ws/src
 
-  netdata:
-    image: netdata/netdata:stable
-    container_name: netdata
-    pid: host
-    network_mode: host
-    restart: unless-stopped
-    cap_add:
-      - SYS_PTRACE
-      - SYS_ADMIN
-    security_opt:
-      - apparmor:unconfined
-    volumes:
-      - netdataconfig:/etc/netdata
-      - netdatalib:/var/lib/netdata
-      - netdatacache:/var/cache/netdata
-      - /:/host/root:ro,rslave
-      - /etc/passwd:/host/etc/passwd:ro
-      - /etc/group:/host/etc/group:ro
-      - /etc/localtime:/etc/localtime:ro
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /etc/os-release:/host/etc/os-release:ro
-      - /var/log:/host/var/log:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /run/dbus:/run/dbus:ro
+  # netdata:
+  #   image: netdata/netdata:stable
+  #   container_name: netdata
+  #   pid: host
+  #   network_mode: host
+  #   restart: unless-stopped
+  #   cap_add:
+  #     - SYS_PTRACE
+  #     - SYS_ADMIN
+  #   security_opt:
+  #     - apparmor:unconfined
+  #   volumes:
+  #     - netdataconfig:/etc/netdata
+  #     - netdatalib:/var/lib/netdata
+  #     - netdatacache:/var/cache/netdata
+  #     - /:/host/root:ro,rslave
+  #     - /etc/passwd:/host/etc/passwd:ro
+  #     - /etc/group:/host/etc/group:ro
+  #     - /etc/localtime:/etc/localtime:ro
+  #     - /proc:/host/proc:ro
+  #     - /sys:/host/sys:ro
+  #     - /etc/os-release:/host/etc/os-release:ro
+  #     - /var/log:/host/var/log:ro
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #     - /run/dbus:/run/dbus:ro
 
-volumes:
-  netdataconfig:
-  netdatalib:
-  netdatacache:
+# volumes:
+#   netdataconfig:
+#   netdatalib:
+#   netdatacache:

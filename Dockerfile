@@ -83,18 +83,20 @@ RUN python3 -m pip install --upgrade pip \
     onvif-zeep \
     pyserial==3.5 \
     pymavlink==2.4.43 \
-    pytest>=8.0
+    pytest>=8.0 \
+    pyproj>=3.6
 
 RUN rosdep init || true \
   && rosdep update
 
 # PAQUETES EXTRA
-RUN apt-get install -y --no-install-recommends \
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
       ros-${ROS_DISTRO}-pointcloud-to-laserscan \
       ros-${ROS_DISTRO}-nav2-rviz-plugins \
       libpcap-dev \
-      libyaml-cpp-dev
-RUN rm -rf /var/lib/apt/lists/*
+      libyaml-cpp-dev \
+  && rm -rf /var/lib/apt/lists/*
 
 ARG USERNAME=ros
 ARG USER_UID=1000

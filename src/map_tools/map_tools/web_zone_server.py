@@ -34,6 +34,7 @@ import yaml
 from rclpy.action import ActionClient
 from rosidl_runtime_py.convert import message_to_ordereddict
 from rosidl_runtime_py.utilities import get_message
+from pyproj import Geod
 
 try:
     from mavros_msgs.msg import GPSRAW
@@ -131,6 +132,7 @@ TOPICS_HISTORY_MAX_TEXT_BYTES = 512 * 1024
 TOPICS_MAX_ARRAY_ITEMS = 100
 TOPICS_MAX_BYTES_PREVIEW = 256
 PROCESS_STATUS_CANCELED = 5
+WGS84_GEOD = Geod(ellps="WGS84")
 
 
 @dataclass
@@ -218,6 +220,22 @@ def _finite_or_none(value: Any) -> Optional[float]:
     return numeric
 
 
+def _gps_distance_m(
+    lat_a_deg: Any,
+    lon_a_deg: Any,
+    lat_b_deg: Any,
+    lon_b_deg: Any,
+) -> Optional[float]:
+    lat_a = _finite_or_none(lat_a_deg)
+    lon_a = _finite_or_none(lon_a_deg)
+    lat_b = _finite_or_none(lat_b_deg)
+    lon_b = _finite_or_none(lon_b_deg)
+    if None in (lat_a, lon_a, lat_b, lon_b):
+        return None
+    _az12, _az21, distance_m = WGS84_GEOD.inv(lon_a, lat_a, lon_b, lat_b)
+    return float(distance_m)
+
+
 def _json_clone_or_empty(value: Any) -> Dict[str, Any]:
     if isinstance(value, dict):
         return json.loads(json.dumps(value))
@@ -291,6 +309,8 @@ class SensorInfoSession:
         self._topic_truncated = False
         self._topic_error = ""
         self._sender_task: Optional[asyncio.Task[Any]] = None
+        self._previous_gps_fix: Optional[Tuple[float, float]] = None
+        self._gps_diferencias_m: Optional[float] = None
 
     def configure(
         self,
@@ -312,6 +332,7 @@ class SensorInfoSession:
             self._destroy_subscriptions_locked()
             self._data = {}
             self._reset_topics_locked()
+            self._reset_gps_differences_locked()
             self._cancel_sender_locked()
 
             if not enabled or normalized_tab is None:
@@ -347,6 +368,7 @@ class SensorInfoSession:
             self._active_tab = None
             self._data = {}
             self._reset_topics_locked()
+            self._reset_gps_differences_locked()
             self._destroy_subscriptions_locked()
             self._cancel_sender_locked()
 
@@ -430,6 +452,10 @@ class SensorInfoSession:
         self._topic_history_text = ""
         self._topic_truncated = False
         self._topic_error = ""
+
+    def _reset_gps_differences_locked(self) -> None:
+        self._previous_gps_fix = None
+        self._gps_diferencias_m = None
 
     def _configure_topics_subscription_locked(self, topic_name: str) -> None:
         self._topic_name = str(topic_name)
@@ -644,8 +670,12 @@ class SensorInfoSession:
             velocity = _json_clone_or_empty(self._data.get("velocity"))
             odom = _json_clone_or_empty(self._data.get("odom"))
             rtk_source_state = _json_clone_or_empty(self._data.get("rtk_source_state"))
+            gps_diferencias_m = self._gps_diferencias_m
 
-        diagnostics: Dict[str, Any] = {"yaw_delta_deg": None}
+        diagnostics: Dict[str, Any] = {
+            "yaw_delta_deg": None,
+            "diferencias": gps_diferencias_m,
+        }
         imu_yaw_rad = _finite_or_none(imu.get("yaw_enu_rad"))
         odom_yaw_rad = _finite_or_none(odom.get("yaw_enu_rad"))
         if imu_yaw_rad is not None and odom_yaw_rad is not None:
@@ -685,6 +715,8 @@ class SensorInfoSession:
         }
 
     def _on_gps(self, msg: NavSatFix) -> None:
+        latitude = _finite_or_none(msg.latitude)
+        longitude = _finite_or_none(msg.longitude)
         with self._lock:
             self._data["gps"] = {
                 "stamp": _stamp_to_dict(msg.header.stamp),
@@ -697,6 +729,18 @@ class SensorInfoSession:
                 "position_covariance": list(msg.position_covariance),
                 "position_covariance_type": int(msg.position_covariance_type),
             }
+            if latitude is None or longitude is None:
+                return
+            if self._previous_gps_fix is None:
+                self._gps_diferencias_m = None
+            else:
+                self._gps_diferencias_m = _gps_distance_m(
+                    self._previous_gps_fix[0],
+                    self._previous_gps_fix[1],
+                    latitude,
+                    longitude,
+                )
+            self._previous_gps_fix = (latitude, longitude)
 
     def _on_fix_type(self, msg: Int32) -> None:
         fix_type = int(msg.data)

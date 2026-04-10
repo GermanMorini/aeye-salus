@@ -1,6 +1,6 @@
 # sensores
 
-Paquete ROS 2 para integración con Pixhawk, dashboard web y utilidades auxiliares de cámara. Mantiene dos caminos de telemetría: el driver propio `pixhawk_driver` y un launch alternativo basado en MAVROS.
+Paquete ROS 2 para integración de sensores, MAVROS, dashboard web y utilidades auxiliares de cámara.
 
 ## Ejecutables reales
 - `pixhawk_driver`
@@ -9,11 +9,28 @@ Paquete ROS 2 para integración con Pixhawk, dashboard web y utilidades auxiliar
 - `camara`
 
 ## Launches reales
+- `ros2 launch sensores real.launch.py`
 - `ros2 launch sensores pixhawk.launch.py`
 - `ros2 launch sensores mavros.launch.py`
 - `ros2 launch sensores rs16.launch.py`
 
+## Launch real integrado
+Este launch agrupa stack real de sensores consumido por navegación:
+- MAVROS
+- cámara
+- RS16
+- `pointcloud_to_laserscan`
+- `datum_setter`
+- `gps_course_heading`
+
+Default:
+```bash
+ros2 launch sensores real.launch.py
+```
+
 ## `pixhawk_driver`
+Launch legado independiente.
+
 Publica:
 - `/imu/data`
 - `/gps/fix`

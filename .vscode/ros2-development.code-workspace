@@ -106,9 +106,9 @@
 				"problemMatcher": []
 			},
 			{
-				"label": "🔧 RECOMPILAR DOCKER",
+				"label": "🔧 DOCKER RECOMPILAR",
 				"type": "shell",
-				"command": "docker compose build ros2",
+				"command": "docker compose build ros2-german",
 				"problemMatcher": []
 			},
 			{
@@ -120,7 +120,7 @@
 			{
 				"label": "🐳 EJECUTAR COMANDO",
 				"type": "shell",
-				"command": "docker exec -ti ros2 bash",
+				"command": "docker exec -ti ros2-german bash",
 				"problemMatcher": []
 			},
 			{
@@ -164,6 +164,7 @@
 				// "command": "./tools/launch_controller.sh",
 				// "command": "./tools/exec.sh ros2 launch controller_server controller_server_sim.launch.py",
 				"command": "./tools/exec.sh ros2 launch map_tools bootup.launch.py use_sim:=true",
+				// "command": "./tools/exec.sh ros2 launch map_tools bootup.launch.py use_sim:=false",
 				"problemMatcher": []
 			},
 			{

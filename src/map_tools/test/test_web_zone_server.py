@@ -4,6 +4,7 @@ import threading
 
 from diagnostic_msgs.msg import DiagnosticStatus
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import NavSatFix
 
 from map_tools.web_zone_server import (
     ROSBAG_TOPIC_PROFILES,
@@ -12,6 +13,7 @@ from map_tools.web_zone_server import (
     WebZoneServerNode,
     _estimated_precision_for_fix,
     _fix_quality_class,
+    _gps_distance_m,
 )
 
 
@@ -467,6 +469,66 @@ def test_sensor_info_topics_session_creates_single_dynamic_subscription_per_sele
     assert subs_after_switch == 1
     assert len(node.destroyed) >= 1
     assert any(item[-1] is True for item in node.created)
+
+
+def _gps_fix(latitude: float, longitude: float) -> NavSatFix:
+    msg = NavSatFix()
+    msg.latitude = float(latitude)
+    msg.longitude = float(longitude)
+    msg.altitude = 0.0
+    return msg
+
+
+def test_gps_distance_m_returns_zero_for_identical_points() -> None:
+    assert _gps_distance_m(-31.0, -64.0, -31.0, -64.0) == 0.0
+
+
+def test_sensor_info_pixhawk_snapshot_exposes_gps_differences() -> None:
+    loop = asyncio.new_event_loop()
+    try:
+        node = _FakeSensorInfoNode(loop)
+        session = SensorInfoSession(node, ws=object())
+
+        session._on_gps(_gps_fix(-31.0, -64.0))
+        first_snapshot = session._build_pixhawk_gps_snapshot()
+        assert first_snapshot["diagnostics"]["diferencias"] is None
+
+        session._on_gps(_gps_fix(-31.0, -64.0001))
+        second_snapshot = session._build_pixhawk_gps_snapshot()
+        diferencias = second_snapshot["diagnostics"]["diferencias"]
+        assert diferencias is not None
+        assert diferencias > 0.0
+    finally:
+        loop.close()
+
+
+def test_sensor_info_gps_differences_ignore_invalid_fix() -> None:
+    loop = asyncio.new_event_loop()
+    try:
+        node = _FakeSensorInfoNode(loop)
+        session = SensorInfoSession(node, ws=object())
+
+        session._on_gps(_gps_fix(-31.0, -64.0))
+        session._on_gps(_gps_fix(-31.0, -64.0001))
+        valid_snapshot = session._build_pixhawk_gps_snapshot()
+        valid_diferencias = valid_snapshot["diagnostics"]["diferencias"]
+
+        invalid_msg = NavSatFix()
+        invalid_msg.latitude = float("nan")
+        invalid_msg.longitude = -64.0002
+        session._on_gps(invalid_msg)
+
+        snapshot = session._build_pixhawk_gps_snapshot()
+        assert snapshot["diagnostics"]["diferencias"] == valid_diferencias
+
+        session._on_gps(_gps_fix(-31.0, -64.0002))
+        next_snapshot = session._build_pixhawk_gps_snapshot()
+        next_diferencias = next_snapshot["diagnostics"]["diferencias"]
+        assert next_diferencias is not None
+        assert valid_diferencias is not None
+        assert next_diferencias < valid_diferencias
+    finally:
+        loop.close()
 
 
 class _FakeWsNode:

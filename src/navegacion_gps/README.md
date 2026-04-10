@@ -15,10 +15,16 @@ Este checkout no incluye los antiguos nodos de waypoints interactivos, logger GU
 - `ros2 launch navegacion_gps simulacion.launch.py`
   - Gazebo Sim + bridge ROS/GZ + robot_localization + Nav2 + zonas + backend web opcional
 - `ros2 launch navegacion_gps real.launch.py`
-  - robot_localization + Nav2 + backend de telemetría seleccionable (`mavros` por defecto, `pixhawk_driver` como fallback) + zonas + backend web opcional
+  - robot_localization + Nav2 + zonas
   - `require_rtk_before_navigation:=true` mantiene el gate de arranque, y `required_fix_type:=RTK_FLOAT` define la calidad mínima exigida; se puede bajar, por ejemplo, a `DGPS`
 - `ros2 launch navegacion_gps rviz_real.launch.py`
   - RViz + `robot_state_publisher` usando el URDF real
+
+Separación real:
+- `ros2 launch sensores real.launch.py`
+  - MAVROS + cámara + RS16 + `pointcloud_to_laserscan` + `datum_setter` + `gps_course_heading`
+- `ros2 launch navegacion_gps real.launch.py`
+  - navegación/localización sin lanzar sensores
 
 ## Flujo de control
 - Nav2 publica `/cmd_vel`.
@@ -71,7 +77,7 @@ Este checkout no incluye los antiguos nodos de waypoints interactivos, logger GU
   - `/imu/data`
   - `/gps/fix`
   - `/odom`
-- Contrato MAVROS nativo usado cuando `telemetry_backend:=mavros`:
+- Contrato MAVROS nativo usado por `sensores real.launch.py`:
   - `/global_position/raw/fix`
   - `/local_position/odom`
   - `/local_position/velocity_local`
@@ -110,7 +116,12 @@ Build:
 ./tools/compile-ros.sh navegacion_gps
 ```
 
-Real:
+Sensores reales:
+```bash
+./tools/exec.sh "source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && ros2 launch sensores real.launch.py"
+```
+
+Navegación real:
 ```bash
 ./tools/exec.sh "source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && ros2 launch navegacion_gps real.launch.py"
 ```
@@ -119,11 +130,6 @@ Frame de navegación en `real.launch.py`:
 - `map_frame:=auto` (default) selecciona `map` cuando `ekf_global:=true` y `odom` cuando `ekf_global:=false`.
 - Se puede forzar manualmente con `map_frame:=map` o `map_frame:=odom`.
 - `zones_manager:=false` también desactiva keepout en Nav2 (no lanza `keepout_filter_mask_server`/`costmap_filter_info_server` y apaga la capa `keepout_filter` en costmaps).
-
-Real con fallback al driver histórico:
-```bash
-./tools/exec.sh "source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && ros2 launch navegacion_gps real.launch.py telemetry_backend:=pixhawk_driver"
-```
 
 Simulación:
 ```bash

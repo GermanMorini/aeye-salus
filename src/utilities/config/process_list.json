@@ -6,13 +6,18 @@
       "cwd": "/ros2_ws"
     },
     {
+      "label": "🌡️ LANZAR SENSORES",
+      "command": "ros2 launch sensores real.launch.py",
+      "cwd": "/ros2_ws"
+    },
+    {
       "label": "📌 LANZAR NAVEGACION (sin requerir fix especifico)",
-      "command": "ros2 launch navegacion_gps real.launch.py datum_setter:=True zones_manager:=False use_robot_state_publisher:=True require_rtk_before_navigation:=False",
+      "command": "ros2 launch navegacion_gps real.launch.py use_robot_state_publisher:=True require_rtk_before_navigation:=False",
       "cwd": "/ros2_ws"
     },
     {
       "label": "📌 LANZAR NAVEGACION (con fix requerido)",
-      "command": "ros2 launch navegacion_gps real.launch.py datum_setter:=True zones_manager:=False use_robot_state_publisher:=True require_rtk_before_navigation:=True",
+      "command": "ros2 launch navegacion_gps real.launch.py use_robot_state_publisher:=True require_rtk_before_navigation:=True",
       "cwd": "/ros2_ws"
     },
     {
@@ -28,6 +33,11 @@
     {
       "label": "🔁 REPRODUCIR ULTIMA BAG",
       "command": "./rosbag_play.sh",
+      "cwd": "/ros2_ws/src/utilities/processs_scripts"
+    },
+    {
+      "label": "📌 FIJAR DATUM",
+      "command": "./fix_datum.sh",
       "cwd": "/ros2_ws/src/utilities/processs_scripts"
     }
   ]

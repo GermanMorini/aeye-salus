@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONTAINER="ros2"
+CONTAINER="${CONTAINER:-ros2-german}"
 DISTANCE_M="${1:-2.0}"
 TARGET_Y_M="${2:-0.0}"
 START_X_M="${3:-0.0}"

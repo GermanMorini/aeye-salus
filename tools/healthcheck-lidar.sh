@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONTAINER="${1:-ros2}"
+CONTAINER="${1:-${CONTAINER:-ros2-german}}"
 
 if ! docker ps --format '{{.Names}}' | grep -qx "${CONTAINER}"; then
   echo "Container '${CONTAINER}' is not running."

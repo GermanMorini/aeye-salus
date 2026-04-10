@@ -174,8 +174,8 @@ def test_dual_ekf_local_uses_wheel_and_pixhawk_odometry_topics() -> None:
     assert "odom1: /odometry/gps" in ekf_config_contents
 
 
-def test_real_launch_includes_datum_setter_node() -> None:
-    launch_path = PACKAGE_ROOT / "launch" / "real.launch.py"
+def test_sensores_real_launch_includes_datum_setter_node() -> None:
+    launch_path = PACKAGE_ROOT.parent / "sensores" / "launch" / "real.launch.py"
     launch_contents = launch_path.read_text(encoding="utf-8")
 
     assert 'DeclareLaunchArgument(\n        "datum_setter",' in launch_contents
@@ -185,7 +185,7 @@ def test_real_launch_includes_datum_setter_node() -> None:
     assert '"get_datum_service": "/datum_setter/get_datum"' in launch_contents
     assert '"datum_service": "/datum"' in launch_contents
     assert '"datum_service_fallback": "/navsat_transform/datum"' in launch_contents
-    assert "PythonExpression([\"'\", datum_setter, \"'.lower() == 'true'\"])" in launch_contents
+    assert "condition=IfCondition(datum_setter)" in launch_contents
 
 
 def test_real_launch_includes_ackermann_odometry_by_default() -> None:
@@ -221,21 +221,6 @@ def test_real_launch_exposes_dual_ekf_toggles_and_no_controller_server() -> None
     assert 'default_value="true"' in launch_contents
     assert 'DeclareLaunchArgument(\n        "ekf_global",\n        default_value="true"' in launch_contents
     assert 'DeclareLaunchArgument(\n        "ukf",\n        default_value="True"' in launch_contents
-    assert 'DeclareLaunchArgument(\n        "datum_setter",\n        default_value="true"' in launch_contents
-    assert (
-        'DeclareLaunchArgument(\n        "enable_gps_course_heading",\n        default_value="true"'
-        in launch_contents
-    )
-    assert (
-        'DeclareLaunchArgument(\n        "gps_course_heading_enable_consistency_filters",\n'
-        '        default_value="true"'
-        in launch_contents
-    )
-    assert (
-        'DeclareLaunchArgument(\n        "gps_course_heading_enable_offset_compensation",\n'
-        '        default_value="true"'
-        in launch_contents
-    )
     assert "condition=IfCondition(ekf_local)" in launch_contents
     assert "condition=IfCondition(ekf_global)" in launch_contents
     assert 'name="ekf_filter_node_odom"' in launch_contents
@@ -246,8 +231,11 @@ def test_real_launch_exposes_dual_ekf_toggles_and_no_controller_server() -> None
     assert "\"'.lower() == 'true' else 'ekf_node'\"" in launch_contents
     assert "condition=IfCondition(use_navsat)" not in launch_contents
     assert 'controller_server' not in launch_contents
-    assert '"cmd_vel_final_topic": "/cmd_vel_final"' in launch_contents
-    assert '"forward_cmd_vel_safe_without_goal": True' in launch_contents
+    assert 'executable="nav_command_server"' not in launch_contents
+    assert 'web_zone_server' not in launch_contents
+    assert 'no_go_editor.launch.py' not in launch_contents
+    assert '"cmd_vel_final_topic": "/cmd_vel_final"' not in launch_contents
+    assert '"forward_cmd_vel_safe_without_goal": True' not in launch_contents
 
 
 def test_real_launch_removes_mapviz_support() -> None:
@@ -261,15 +249,11 @@ def test_real_launch_removes_mapviz_support() -> None:
     assert "ld.add_action(mapviz_cmd)" not in launch_contents
 
 
-def test_real_launch_exposes_rtk_toggles_for_telemetry_backends() -> None:
-    launch_path = PACKAGE_ROOT / "launch" / "real.launch.py"
+def test_sensores_real_launch_exposes_mavros_rtk_toggles() -> None:
+    launch_path = PACKAGE_ROOT.parent / "sensores" / "launch" / "real.launch.py"
     launch_contents = launch_path.read_text(encoding="utf-8")
 
     assert 'DeclareLaunchArgument(\n        "enable_rtk",\n        default_value="false"' in launch_contents
-    assert (
-        'DeclareLaunchArgument(\n        "enable_gps_rtk",\n        default_value="true"'
-        in launch_contents
-    )
     assert (
         'DeclareLaunchArgument(\n        "enable_rtcm_tcp",\n        default_value="true"'
         in launch_contents
@@ -287,7 +271,6 @@ def test_real_launch_exposes_rtk_toggles_for_telemetry_backends() -> None:
     assert '"rtcm_tcp_host": rtcm_tcp_host' in launch_contents
     assert '"rtcm_tcp_port": rtcm_tcp_port' in launch_contents
     assert '"rtcm_topic": rtcm_topic' in launch_contents
-    assert '"enable_gps_rtk": enable_gps_rtk' in launch_contents
 
 
 def test_real_launch_auto_resolves_map_frame_from_ekf_global_toggle() -> None:
@@ -340,25 +323,32 @@ def test_real_launch_starts_nav2_after_tf_providers_in_global_only_mode() -> Non
     assert nav2_index > navsat_index
 
 
-def test_real_launch_groups_sensors_before_delayed_localization() -> None:
+def test_real_launch_no_longer_starts_sensor_stack() -> None:
     launch_path = PACKAGE_ROOT / "launch" / "real.launch.py"
     launch_contents = launch_path.read_text(encoding="utf-8")
 
-    assert "delayed_start_cmd = TimerAction(period=5.0, actions=delayed_start_actions)" in launch_contents
-    assert "# Block 3 - Sensors" in launch_contents
-    assert "# Block 4 - Localization" in launch_contents
-    assert "# Block 5 - Navigation" in launch_contents
-    assert "# Block 6 - Navigation Support And Web" in launch_contents
-    assert "# Block 7 - Optional Runtime Utilities" in launch_contents
+    assert 'DeclareLaunchArgument(\n        "telemetry_backend",' not in launch_contents
+    assert 'DeclareLaunchArgument(\n        "start_lidar",' not in launch_contents
+    assert 'DeclareLaunchArgument(\n        "launch_web",' not in launch_contents
+    assert 'executable="datum_setter"' not in launch_contents
+    assert 'executable="gps_course_heading"' not in launch_contents
+    assert 'package="pointcloud_to_laserscan"' not in launch_contents
+    assert 'launch", "mavros.launch.py"' not in launch_contents
+    assert 'launch", "pixhawk.launch.py"' not in launch_contents
+    assert 'launch", "rs16.launch.py"' not in launch_contents
 
-    gps_course_index = launch_contents.index("ld.add_action(gps_course_heading_cmd)")
-    datum_index = launch_contents.index("ld.add_action(datum_setter_cmd)")
-    lidar_to_scan_index = launch_contents.index("ld.add_action(lidar_to_scan_cmd)")
-    delayed_start_index = launch_contents.index("ld.add_action(delayed_start_cmd)")
 
-    assert gps_course_index < delayed_start_index
-    assert datum_index < delayed_start_index
-    assert lidar_to_scan_index < delayed_start_index
+def test_sensores_real_launch_groups_real_sensor_stack() -> None:
+    launch_path = PACKAGE_ROOT.parent / "sensores" / "launch" / "real.launch.py"
+    launch_contents = launch_path.read_text(encoding="utf-8")
+
+    assert 'DeclareLaunchArgument(\n        "start_lidar",' in launch_contents
+    assert 'DeclareLaunchArgument(\n        "launch_web",' in launch_contents
+    assert 'package="pointcloud_to_laserscan"' in launch_contents
+    assert 'executable="gps_course_heading"' in launch_contents
+    assert 'executable="datum_setter"' in launch_contents
+    assert 'launch", "mavros.launch.py"' in launch_contents
+    assert 'launch", "rs16.launch.py"' in launch_contents
 
 
 def test_dual_ekf_navsat_waits_for_runtime_datum() -> None:

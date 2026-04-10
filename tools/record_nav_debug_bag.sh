@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONTAINER="ros2"
+CONTAINER="${CONTAINER:-ros2-german}"
 WS="/ros2_ws"
 PROFILE="${1:-core}"
 STAMP="$(date +%Y%m%d_%H%M%S)"
