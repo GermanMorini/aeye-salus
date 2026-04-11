@@ -28,6 +28,7 @@ class DatumSetterNode(Node):
         self.declare_parameter("get_datum_service", "/datum_setter/get_datum")
         self.declare_parameter("datum_service", "/datum")
         self.declare_parameter("datum_service_fallback", "/navsat_transform/datum")
+        self.declare_parameter("auto_set_on_rtk", True)
         self.declare_parameter("imu_yaw_max_age_s", 1.0)
         self.declare_parameter("datum_wait_timeout_s", 2.0)
         self.declare_parameter("datum_call_timeout_s", 2.5)
@@ -43,6 +44,7 @@ class DatumSetterNode(Node):
         self.datum_service_fallback = str(
             self.get_parameter("datum_service_fallback").value
         )
+        self.auto_set_on_rtk = bool(self.get_parameter("auto_set_on_rtk").value)
         self.imu_yaw_max_age_s = max(
             0.05, float(self.get_parameter("imu_yaw_max_age_s").value)
         )
@@ -125,7 +127,8 @@ class DatumSetterNode(Node):
             f"gps_topic={self.gps_topic}, imu_topic={self.imu_topic}, "
             f"rtk_status_topic={self.rtk_status_topic}, "
             f"datum_service={self.datum_service}, "
-            f"datum_service_fallback={self.datum_service_fallback})"
+            f"datum_service_fallback={self.datum_service_fallback}, "
+            f"auto_set_on_rtk={self.auto_set_on_rtk})"
         )
 
     @staticmethod
@@ -408,6 +411,13 @@ class DatumSetterNode(Node):
         lat = float(msg.latitude)
         lon = float(msg.longitude)
         navsat_rtk = int(msg.status.status) >= int(NavSatStatus.STATUS_GBAS_FIX)
+        if not self.auto_set_on_rtk:
+            with self._lock:
+                self._last_gps_fix = (lat, lon)
+                self._last_navsat_rtk = navsat_rtk
+                self._rtk_current = self._combined_rtk_locked()
+                self._pending_auto_set = False
+            return
 
         auto_set_payload: Optional[Tuple[float, float, bool, str]] = None
         with self._lock:
@@ -441,6 +451,13 @@ class DatumSetterNode(Node):
     def _on_rtk_status(self, msg: String) -> None:
         status_text = str(msg.data)
         status_is_rtk = DatumSetterNode._status_text_is_rtk(status_text)
+        if not self.auto_set_on_rtk:
+            with self._lock:
+                self._last_rtk_status_text = status_text
+                self._last_rtk_status_is_rtk = status_is_rtk
+                self._rtk_current = self._combined_rtk_locked()
+                self._pending_auto_set = False
+            return
 
         log_pending_gps = False
         auto_set_payload: Optional[Tuple[float, float, bool, str]] = None
@@ -492,6 +509,8 @@ class DatumSetterNode(Node):
         with self._lock:
             self._last_imu_yaw = float(yaw)
             self._last_imu_yaw_monotonic = time.monotonic()
+            if not self.auto_set_on_rtk:
+                return
 
             combined_rtk = self._combined_rtk_locked()
             if combined_rtk and self._pending_auto_set and self._last_gps_fix is not None:

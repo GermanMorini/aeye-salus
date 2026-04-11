@@ -36,6 +36,7 @@ class _FakeAutoNode:
         self._last_imu_yaw = None
         self._last_imu_yaw_monotonic = None
         self.imu_yaw_max_age_s = 1.0
+        self.auto_set_on_rtk = True
         self._rtk_current = False
         self._pending_auto_set = False
         self.logger = _FakeLogger()
@@ -231,6 +232,23 @@ def test_auto_set_is_deferred_until_imu_yaw_becomes_available() -> None:
     DatumSetterNode._on_imu(node, _imu_msg(0.6))
     assert len(node.auto_calls) == 1
     assert node.auto_calls[0][3] == "rtk_edge_pending_imu"
+
+
+def test_auto_set_disabled_never_applies_datum() -> None:
+    node = _FakeAutoNode()
+    node.auto_set_on_rtk = False
+    DatumSetterNode._on_imu(node, _imu_msg(0.2))
+
+    DatumSetterNode._on_gps_fix(
+        node,
+        _gps_msg(-31.0, -64.0, NavSatStatus.STATUS_GBAS_FIX),
+    )
+    status_msg = String()
+    status_msg.data = "RTK_FIXED"
+    DatumSetterNode._on_rtk_status(node, status_msg)
+
+    assert node.auto_calls == []
+    assert node._pending_auto_set is False
 
 
 def test_set_datum_fails_without_current_gps_for_empty_coords() -> None:

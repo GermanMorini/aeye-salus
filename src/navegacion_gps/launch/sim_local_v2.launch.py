@@ -492,6 +492,7 @@ def generate_launch_description():
                         "get_datum_service": "/datum_setter/get_datum",
                         "datum_service": "/datum",
                         "datum_service_fallback": "/navsat_transform/datum",
+                        "auto_set_on_rtk": False,
                         "imu_yaw_max_age_s": 1.0,
                         "datum_wait_timeout_s": 2.0,
                         "datum_call_timeout_s": 2.5,

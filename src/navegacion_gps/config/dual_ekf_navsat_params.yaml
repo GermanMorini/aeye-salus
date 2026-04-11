@@ -98,7 +98,8 @@ ekf_filter_node_map:
 navsat_transform:
   ros__parameters:
     frequency: 10.0
-    magnetic_declination_radians: 0.0
+    # magnetic_declination_radians: 0.0
+    magnetic_declination_radians:  -0.122
     yaw_offset: 0.0
     # yaw_offset: 1.57
     zero_altitude: true
@@ -106,9 +107,10 @@ navsat_transform:
     publish_filtered_gps: true
     use_odometry_yaw: false
     wait_for_datum: true
-    # datum: [-31.4858037, -64.2410570, 0.0] # Ejemplo: hub de la UCC, Córdoba, Argentina
-    datum: [-31.486241, -64.240628, 0.0] # Ejemplo: hub de la UCC, Córdoba, Argentina
+    # publish_tf: true
+    datum: [-31.485813, -64.241166, 0.0] # Ejemplo: hub de la UCC, Córdoba, Argentina
 
     gps_topic: /gps/fix
     odom_topic: /odometry/local
+    imu_topic: /gps/course_heading
     output_topic: /odometry/gps

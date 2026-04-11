@@ -70,6 +70,7 @@ def test_sim_local_v2_launch_exposes_datum_setter_toggle() -> None:
     assert 'DeclareLaunchArgument("datum_setter", default_value="false")' in launch_contents
     assert 'executable="datum_setter"' in launch_contents
     assert "PythonExpression([\"'\", datum_setter, \"'.lower() == 'true'\"])" in launch_contents
+    assert '"auto_set_on_rtk": False' in launch_contents
 
 
 def test_sim_local_v2_launch_forces_keepout_mask_frame_to_map() -> None:

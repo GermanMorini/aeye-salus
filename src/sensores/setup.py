@@ -30,6 +30,7 @@ setup(
         ('share/' + package_name + '/launch', [
             'launch/mavros.launch.py',
             'launch/pixhawk.launch.py',
+            'launch/real.launch.py',
             'launch/rs16.launch.py',
         ]),
         ('share/' + package_name + '/config', [
