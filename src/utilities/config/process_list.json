@@ -31,6 +31,11 @@
       "cwd": "/ros2_ws"
     },
     {
+      "label": "🛰️ ROSBOARD",
+      "command": "ros2 run rosboard rosboard_node",
+      "cwd": "/ros2_ws"
+    },
+    {
       "label": "🔁 REPRODUCIR ULTIMA BAG",
       "command": "./rosbag_play.sh",
       "cwd": "/ros2_ws/src/utilities/processs_scripts"

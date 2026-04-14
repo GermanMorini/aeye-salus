@@ -144,7 +144,7 @@
 			{
 				"label": "🖥️ LANZAR SIMULACION",
 				"type": "shell",
-				"command": "./tools/exec.sh ros2 launch navegacion_gps simulacion.launch.py ekf_global:=True datum_setter:=True ukf:=True | tee log/simulacion_$(date +%Y-%m-%d_%H-%M).log",
+				"command": "./tools/exec.sh ros2 launch navegacion_gps simulacion.launch.py ekf_global:=True ukf:=True fromll_output_frame:=odom | tee log/simulacion_$(date +%Y-%m-%d_%H-%M).log",
 				"problemMatcher": []
 			},
 			{

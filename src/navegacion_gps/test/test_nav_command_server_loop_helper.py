@@ -1,3 +1,4 @@
+import math
 import threading
 from types import SimpleNamespace
 
@@ -206,26 +207,44 @@ class _FakeTransformNode:
 
 class _FakeBuildPoseNode:
     _build_pose_from_ll = NavCommandServerNode._build_pose_from_ll
+    _yaw_to_quaternion = NavCommandServerNode._yaw_to_quaternion
+    _normalize_yaw_deg = staticmethod(NavCommandServerNode._normalize_yaw_deg)
+    _north_east_m_to_ll = staticmethod(NavCommandServerNode._north_east_m_to_ll)
+    _fallback_fromll_yaw = NavCommandServerNode._fallback_fromll_yaw
+    _project_geographic_yaw_to_fromll = NavCommandServerNode._project_geographic_yaw_to_fromll
 
     def __init__(self, fromll_output_frame: str) -> None:
         self.fromll_output_frame = str(fromll_output_frame)
         self.captured_pose = None
+        self.approx_fromll_fallback_enabled = False
+        self.approx_fromll_datum_yaw_deg = 0.0
 
     def _call_from_ll(self, lat: float, lon: float):
-        assert lat == -31.0
-        assert lon == -64.0
-        return (1.5, -2.5, 0.0)
-
-    def _project_geographic_yaw_to_fromll(self, lat: float, lon: float, yaw_deg: float, converted):
-        assert lat == -31.0
-        assert lon == -64.0
-        assert yaw_deg == 90.0
-        assert converted == (1.5, -2.5, 0.0)
-        return 12.0
+        if math.isclose(lat, -31.0, abs_tol=1.0e-9) and math.isclose(lon, -64.0, abs_tol=1.0e-9):
+            return (1.5, -2.5, 0.0)
+        if math.isclose(lat, -31.0 + (1.0 / 111_320.0), abs_tol=1.0e-9) and math.isclose(
+            lon, -64.0, abs_tol=1.0e-9
+        ):
+            return (1.5, -1.5, 0.0)
+        if math.isclose(lat, -31.0 - (1.0 / 111_320.0), abs_tol=1.0e-9) and math.isclose(
+            lon, -64.0, abs_tol=1.0e-9
+        ):
+            return (1.5, -3.5, 0.0)
+        return None
 
     def _transform_pose_to_map(self, pose: PoseStamped):
         self.captured_pose = pose
         return pose
+
+
+def _yaw_deg_from_quaternion(msg: PoseStamped) -> float:
+    q = msg.pose.orientation
+    return math.degrees(
+        math.atan2(
+            2.0 * ((float(q.w) * float(q.z)) + (float(q.x) * float(q.y))),
+            1.0 - 2.0 * ((float(q.y) * float(q.y)) + (float(q.z) * float(q.z))),
+        )
+    )
 
 
 def _pose(frame_id: str, sec: int, nanosec: int = 0) -> PoseStamped:
@@ -337,7 +356,7 @@ def test_transform_pose_to_map_uses_tf_buffer_when_fromll_output_frame_differs()
     assert node._tf_buffer.calls[0][1] == "odom"
 
 
-def test_build_pose_from_ll_uses_fromll_output_frame_for_intermediate_pose() -> None:
+def test_build_pose_from_ll_projects_geographic_yaw_in_fromll_frame() -> None:
     node = _FakeBuildPoseNode(fromll_output_frame="map")
 
     pose = NavCommandServerNode._build_pose_from_ll(node, -31.0, -64.0, 90.0)
@@ -346,7 +365,30 @@ def test_build_pose_from_ll_uses_fromll_output_frame_for_intermediate_pose() -> 
     assert pose.header.frame_id == "map"
     assert pose.pose.position.x == 1.5
     assert pose.pose.position.y == -2.5
-    assert pose.pose.orientation.w != 0.0
+    yaw_deg = _yaw_deg_from_quaternion(pose)
+    assert math.isclose(yaw_deg, 90.0, rel_tol=0.0, abs_tol=1.0e-6)
+
+
+def test_build_pose_from_ll_normalizes_projected_fromll_yaw_before_quaternion() -> None:
+    node = _FakeBuildPoseNode(fromll_output_frame="map")
+
+    pose = NavCommandServerNode._build_pose_from_ll(node, -31.0, -64.0, 450.0)
+    yaw_deg = _yaw_deg_from_quaternion(pose)
+    assert math.isclose(yaw_deg, 90.0, rel_tol=0.0, abs_tol=1.0e-6)
+
+    pose = NavCommandServerNode._build_pose_from_ll(node, -31.0, -64.0, -450.0)
+    yaw_deg = _yaw_deg_from_quaternion(pose)
+    assert math.isclose(yaw_deg, -90.0, rel_tol=0.0, abs_tol=1.0e-6)
+
+
+def test_build_pose_from_ll_uses_fallback_yaw_when_tip_projection_conversion_fails() -> None:
+    node = _FakeBuildPoseNode(fromll_output_frame="map")
+    node.approx_fromll_fallback_enabled = True
+    node.approx_fromll_datum_yaw_deg = 180.0
+
+    pose = NavCommandServerNode._build_pose_from_ll(node, -31.0, -64.0, 20.0)
+    yaw_deg = _yaw_deg_from_quaternion(pose)
+    assert math.isclose(yaw_deg, -160.0, rel_tol=0.0, abs_tol=1.0e-6)
 
 
 def test_send_nav_goal_for_poses_multi_pose_path_uses_zero_stamp_latest() -> None:

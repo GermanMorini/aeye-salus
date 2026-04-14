@@ -5,6 +5,10 @@ if [ -f /opt/ros/humble/setup.bash ]; then
   source /opt/ros/humble/setup.bash
 fi
 
+if [ -f /opt/ros/rosboard_humble/setup.bash ]; then
+  source /opt/ros/rosboard_humble/setup.bash
+fi
+
 if [ -f /ros2_ws/install/setup.bash ]; then
   source /ros2_ws/install/setup.bash
 fi

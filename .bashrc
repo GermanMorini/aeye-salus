@@ -1,4 +1,7 @@
 source /opt/ros/humble/setup.bash
+if [ -f /opt/ros/rosboard_humble/setup.bash ]; then
+  source /opt/ros/rosboard_humble/setup.bash
+fi
 source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash
 
 alias ll='ls -alF'

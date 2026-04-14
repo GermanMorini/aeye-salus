@@ -94,9 +94,21 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends \
       ros-${ROS_DISTRO}-pointcloud-to-laserscan \
       ros-${ROS_DISTRO}-nav2-rviz-plugins \
+      python3-pil \
+      python3-tornado \
       libpcap-dev \
       libyaml-cpp-dev \
   && rm -rf /var/lib/apt/lists/*
+
+ARG ROSBOARD_VERSION=1.3.1
+ENV ROSBOARD_OVERLAY=/opt/ros/rosboard_${ROS_DISTRO}
+
+RUN mkdir -p /tmp/rosboard_ws/src \
+  && git clone --depth 1 --branch v${ROSBOARD_VERSION} https://github.com/dheera/rosboard.git /tmp/rosboard_ws/src/rosboard \
+  && cd /tmp/rosboard_ws \
+  && . /opt/ros/${ROS_DISTRO}/setup.sh \
+  && colcon build --packages-select rosboard --merge-install --install-base ${ROSBOARD_OVERLAY} \
+  && rm -rf /tmp/rosboard_ws
 
 ARG USERNAME=ros
 ARG USER_UID=1000
@@ -104,8 +116,9 @@ ARG USER_GID=1000
 
 RUN groupadd --gid ${USER_GID} ${USERNAME} \
   && useradd --uid ${USER_UID} --gid ${USER_GID} -m ${USERNAME} \
+  && groupadd --gid 986 host_docker || true \
   && groupadd --gid 20 dialout || true \
-  && usermod -aG dialout,tty ${USERNAME} \
+  && usermod -aG dialout,tty,986 ${USERNAME} \
   && mkdir -p /ros2_ws \
   && chown -R ${USERNAME}:${USERNAME} /ros2_ws
 

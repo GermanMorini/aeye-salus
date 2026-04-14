@@ -59,7 +59,6 @@ class NavCommandServerNode(Node):
         self.declare_parameter("approx_fromll_zero_threshold_m", 1.0e-3)
         self.declare_parameter("approx_fromll_min_distance_for_fallback_m", 0.5)
         self.declare_parameter("fromll_output_frame", "odom")
-        self.declare_parameter("fromll_frame", "odom")
         self.declare_parameter("map_frame", "map")
         self.declare_parameter("tf_lookup_timeout_s", 0.5)
         self.declare_parameter("gps_topic", "/gps/fix")
@@ -128,11 +127,7 @@ class NavCommandServerNode(Node):
         configured_fromll_output_frame = str(
             self.get_parameter("fromll_output_frame").value
         ).strip()
-        configured_fromll_frame = str(self.get_parameter("fromll_frame").value).strip()
-        self.fromll_output_frame = (
-            configured_fromll_output_frame or configured_fromll_frame or "odom"
-        )
-        self.fromll_frame = self.fromll_output_frame
+        self.fromll_output_frame = configured_fromll_output_frame or "odom"
         self.map_frame = str(self.get_parameter("map_frame").value)
         self.tf_lookup_timeout_s = max(
             0.05, float(self.get_parameter("tf_lookup_timeout_s").value)
@@ -338,7 +333,8 @@ class NavCommandServerNode(Node):
         self.get_logger().info(
             "fromLL frame config "
             f"(service={self.fromll_service}, fallback={self.fromll_service_fallback}, "
-            f"output_frame={self.fromll_output_frame}, target_frame={self.map_frame})"
+            f"output_frame={self.fromll_output_frame}, target_frame={self.map_frame}, "
+            f"yaw_projection_frame={self.fromll_output_frame})"
         )
         self.get_logger().info(
             "Callback groups configured (services=MutuallyExclusive, clients=Reentrant)"
@@ -585,8 +581,12 @@ class NavCommandServerNode(Node):
         return out_lat, out_lon
 
     def _fallback_fromll_yaw(self, yaw_deg: float) -> float:
-        if self.approx_fromll_fallback_enabled and math.isfinite(self.approx_fromll_datum_yaw_deg):
-            return self._normalize_yaw_deg(float(yaw_deg) + float(self.approx_fromll_datum_yaw_deg))
+        if self.approx_fromll_fallback_enabled and math.isfinite(
+            self.approx_fromll_datum_yaw_deg
+        ):
+            return self._normalize_yaw_deg(
+                float(yaw_deg) + float(self.approx_fromll_datum_yaw_deg)
+            )
         return self._normalize_yaw_deg(yaw_deg)
 
     def _project_geographic_yaw_to_fromll(
